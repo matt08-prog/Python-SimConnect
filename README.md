@@ -195,4 +195,4 @@ Below are links to the Microsoft documentation
 
 # Radio Garden
 
-I have added a [Radio Garden](http://radio.garden/) api call in the radio tab of this program. It takes your curren Lattitude and Longittude and converts it to the nearest radio station. There is also a next station button that will cycle through stations if there is another close enough.
+I have added a [Radio Garden](http://radio.garden/) api call in the radio tab of this program. It takes your current Latitude and Longitude and converts it to the nearest radio station. There is also a next station button that will cycle through stations if there is another close enough.
