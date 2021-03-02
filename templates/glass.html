@@ -416,7 +416,7 @@
 						</div>
 					</div>
 				</div>
-				
+
 				<!-- RADIOS -->
 				<div class="card">
 					<div id="collapseRadios" class="collapse" aria-labelledby="collapseRadios" data-parent="#accordionHUD">
@@ -470,8 +470,50 @@
 														<button onclick="triggerSimEvent ('NAV2_RADIO_SWAP', 0, true)" id="autopilot-com-freq" type="button" class="btn m-1 btn-danger" title="Swap NAV2 Standby frequency" style="width:65px">&lt;--&gt;</button>
 													</td>
 												</tr>
-											</table>
+												<tr>
+													<td>Latitude: </td>
+													<td colspan="2">
+														<p class="lat" style="text-align: center; font-weight: bold" class ="m-1"> 0.0 </p>
+													</td>
+												</tr>
 
+												<tr>
+													<td>Longitude: </td>
+													<td colspan="2">
+														<p class = "long" style="text-align: center; font-weight: bold" class ="m-1"> 0.0 </p>
+													</td>
+												</tr>
+
+												<tr>
+													<td>Channel Name: </td>
+													<td colspan="2">
+														<p class = "station_name" style="text-align: center; font-weight: bold" class ="m-1"> Loading Station </p>
+													</td>
+												</tr>
+												<tr>
+													<td colspan="2">
+														<audio class = "radio_player"> Your browser does not support the audio element.
+															<source class = "audioSrc">
+														</audio>
+													</td>
+												</tr>
+												<tr>
+													<td colspan="2">
+														<button onmousedown="PlayAudio()" class = "play" type="button"> Play </button>
+													</td>
+												</tr>
+												<tr>
+													<td>Next Station:</td>
+													<td colspan="2">
+														<button onclick="changeStation()" id="" type="button" class="btn m-1 btn-danger"  style="width:55px">&gt;</button>
+													</td>
+												</tr>
+												<tr>
+													<td colspan="2">
+														<button onmousedown="RefreshStations()" type="button"> Refresh Stations </button>
+													</td>
+												</tr>
+											</table>
 										</div>
 									</div>
 								</div>
@@ -479,11 +521,188 @@
 						</div>
 					</div>
 				</div>
-			</div>
-		</div>
-	</div>
+</div>
 
-</div>  <!--Main container-->
+<!-- ***************************************** Get Radio Garden Data ***************************************** -->
+<script>
+	let index = 0;
+	let next = true;
+	let Data;
+	let input;
+	let get = false;
+	let once = true;
+	var pos = 0;
+
+	let audio = document.querySelector(".radio_player");
+	let player = document.querySelector(".audioSrc");
+	let playButton = document.querySelector(".play");
+	let file;
+	let Latitude;
+	let Longitude;
+	let stationName = "Loading Station" ;
+	let mp3Link;
+	let shouldPause = false;
+	let stationIndex = 0;
+	let shouldChange = false;
+	let stationLength = 0;
+	let dat = {};
+	let playing = false;
+	let wasPlaying = false;
+	let station;
+	let reset = true;
+
+	console.log(player.src);
+
+	function changeStation()
+	{
+		if (shouldChange)
+		{
+			shouldChange = false;
+			stationIndex++;
+			if(stationIndex >= stationLength)
+			{
+				stationIndex = 0;
+			}
+			getCoord(file);
+		}
+	}
+
+	function RefreshStations()
+	{
+		if (shouldChange)
+		{
+			stationIndex = 0;
+			reset = true;
+			shouldChange = false;
+			getCoord(file);
+		}
+	}
+
+	function PlayAudio()
+	{
+		wasPlaying = playing;
+		if(playing == false)
+		{
+			console.log("played");
+			playing = true;
+			player.src = mp3Link;
+			console.log(mp3Link);
+			audio.load();
+			audio.play();
+			playButton.textContent = "Pause";
+		}
+
+		if(playing == true && wasPlaying == true)
+		{
+			playing = false;
+			console.log("paused");
+			player.setAttribute("src", "");
+			audio.pause();
+			setTimeout(function () {
+				audio.load();
+			});
+			playButton.textContent = "Play";
+		}
+	}
+
+	function LoadNewTrack(link){
+		player.setAttribute("src", link);
+		if(playing == true)
+		{
+			audio.load();
+			audio.play();
+		}
+	}
+
+(function loadJSONCoords() {
+	$.getJSON('static/js/coords.json', function(data) {
+		getCoord(data);
+		file = data;
+	});
+})();
+
+	function getCoord(file) {
+		$.getJSON('http://localhost:5000/ui', function(data) {
+			Latitude = data.LATITUDE;
+			Longitude = data.LONGITUDE;
+
+			dat =
+			{
+				latitude : Latitude,
+				longitude : Longitude
+			};
+
+			getStation(file, dat);
+		});
+	}
+
+	function getStation(obj, input){
+			if (reset)
+			{
+				reset = false;
+	    	station = CheckDists(input.latitude, input.longitude, obj);
+		  }
+			var proxyurl = "https://cors-anywhere.herokuapp.com/"
+	     	var link = "http://radio.garden/api/ara/content/page/" + station.id;
+	     let setting = { method: "Get"};
+			 fetch(proxyurl + link, setting)
+	     .then(res => res.json())
+	     .then((json) => {
+				 		stationLength = json.data.content[0].items.length - 1;
+	          link = json.data.content[0].items[stationIndex].href;
+						stationName = json.data.content[0].items[stationIndex].title;
+	          link = link.substr(1);
+	          pos = link.search("/");
+	          link = link.substr(pos+1);
+	          pos = link.substr(1).search("/");
+	          link = link.substr(pos+1);
+	          pos = link.substr(1).search("/");
+
+	          mp3Link = "http://radio.garden/api/ara/content/listen" + link + "/channel.mp3";
+						LoadNewTrack(mp3Link);
+					shouldChange = true;
+					document.querySelector(".lat").innerHTML = Latitude;
+					document.querySelector(".long").innerHTML = Longitude;
+					document.querySelector(".station_name").innerHTML = stationName;
+	     });
+	}
+
+
+	function CheckDists(lat1,long1, obj)
+	{
+	     var lat2 = 0;
+	     var long2 = 0;
+	     var dists = [];
+
+	     for(let i = 0; i < obj.length; i++)
+	     {
+	          lat2 = obj[i].latitude;
+	          long2 = obj[i].longitude;
+
+	          var p = 0.017453292519943295;
+	          var c = Math.cos;
+	          var a = 0.5 - c((lat2 - lat1) * p)/2 +
+	                    c(lat1 * p) * c(lat2 * p) *
+	                    (1 - c((long2 - long1) * p))/2;
+
+	          dists.push(12742 * Math.asin(Math.sqrt(a)));
+	     }
+
+	     var shortestDist = dists[0];
+	     var index = 0;
+
+	     for(let i = 0; i < dists.length; i++)
+	     {
+	          if(dists[i] < shortestDist)
+	          {
+	               shortestDist = dists[i];
+	               index = i;
+	          }
+	     }
+	     return obj[index];
+	}
+</script>
+
 
 <!-- Create map object -->
 <script>
